@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verify the webhook before you trust it | Okunola David Akinloye</title>
+<meta name="description" content="Replacing manual bank-transfer reconciliation for a Lagos events business with an n8n chain that verifies every Paystack webhook against an HMAC SHA512 signature before writing a single row.">
+<link rel="canonical" href="https://loye-portfolio-seven.vercel.app/notes-webhook-verification.html">
+<meta name="theme-color" content="#F2EFE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F0F0D" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://loye-portfolio-seven.vercel.app/notes-webhook-verification.html">
+<meta property="og:title" content="Verify the webhook before you trust it">
+<meta property="og:description" content="An n8n payment reconciliation chain that checks an HMAC SHA512 signature before writing a row, and the sandbox restriction that forced a rebuild.">
+<meta property="og:image" content="https://loye-portfolio-seven.vercel.app/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+</script>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+
+<nav class="nav">
+  <div class="wrap">
+    <a href="/" class="mark-word">Loye<span>.</span></a>
+    <div class="nav-right">
+      <button id="theme" type="button">LIGHT</button>
+      <a href="/#contact" class="hire" data-magnetic>Start a project</a>
+    </div>
+  </div>
+</nav>
+
+<main class="note">
+  <div class="wrap">
+
+    <p class="note-kicker">FIELD NOTE 01 / PAYMENTS</p>
+    <h1>Verify the webhook before you trust it.</h1>
+    <p class="standfirst">A Lagos events business was reconciling bank transfers by hand. The replacement took seven n8n nodes, and three of them exist purely so the system never believes something it has not checked.</p>
+
+    <div class="note-meta">
+      <span>BUILD <b>Orisha of Lagos</b></span>
+      <span>STACK <b>n8n, Paystack, Sheets</b></span>
+      <span>STATUS <b>Working demo</b></span>
+    </div>
+
+    <p>Registration for their monthly events arrived through three doors at once: Selar, WhatsApp, and straight bank transfer. The first two were fine. Transfers were the problem.</p>
+
+    <p>The process went like this. Someone paid. Someone on the team asked them for a receipt. Someone opened the bank account to check the amount had actually landed. Someone matched it by eye. Then someone typed the name onto a list.</p>
+
+    <p>At fifty to a hundred registrations an event, and well above that on the big ones, that is a person doing data entry instead of running an event. It is also slow in a way that costs money: attendees sit in limbo between paying and being confirmed, and some of them message to ask whether it worked.</p>
+
+    <h2>Why this is a verification problem, not a plumbing problem</h2>
+
+    <p>The obvious build is: payment notification comes in, write a row, send a confirmation. That works, and it is also wrong.</p>
+
+    <p>A webhook endpoint is a public URL. Anyone who finds it can post anything to it. If the system writes a row for every payload it receives, then adding yourself to a paid event guest list costs nothing more than a single HTTP request with a plausible-looking body. No payment required.</p>
+
+    <p>This is not hypothetical paranoia. Endpoint URLs leak through browser history, shared screenshots, logs, and anyone who has ever had access to the automation. The fix is cheap, so there is no reason to skip it.</p>
+
+    <div class="pull">
+      <p><b>THE RULE</b></p>
+      <p>A payment webhook is an untrusted claim that money arrived. It becomes trustworthy only after you check it was signed by the person who holds the secret key. Until then it is a stranger telling you they paid.</p>
+    </div>
+
+    <h2>How the signature works</h2>
+
+    <p>Paystack signs every webhook it sends. It takes the exact body of the request, runs an HMAC SHA512 over it using your secret key, and puts the result in an <code>x-paystack-signature</code> header.</p>
+
+    <p>Because the secret key never leaves Paystack and your server, only those two parties can produce a valid signature for a given body. So the check is: compute the same hash yourself, and compare. Match means genuine. No match means discard.</p>
+
+    <p>One detail does most of the damage when people get it wrong. You must hash <strong>the raw body exactly as it arrived</strong>, byte for byte. Not the parsed object. Not a re-serialised version of the parsed object. Most automation tools helpfully parse incoming JSON for you, and that parsing quietly changes key order and whitespace, which changes the hash, which means every genuine webhook now fails verification and you conclude the signature check is broken.</p>
+
+    <p>It is not broken. You hashed a different string.</p>
+
+    <h2>Where n8n got in the way</h2>
+
+    <p>My first version did the hashing in a Code node, the way you would in any Node script:</p>
+
+<pre><code><span class="c">// This does not work in n8n.</span>
+const crypto = require('crypto');
+const hash = crypto
+  .createHmac('sha512', secret)
+  .update(rawBody)
+  .digest('hex');</code></pre>
+
+    <p>n8n runs Code nodes inside a sandbox, and that sandbox does not permit <code>require</code> of Node's built-in modules by default. The node fails. There is no amount of rewriting the JavaScript that fixes it, because the restriction is the point of the sandbox.</p>
+
+    <p>The answer is that n8n already ships the capability as a first-class node. The <strong>Crypto</strong> node does HMAC with a choice of algorithms, takes the value to hash and the secret as parameters, and writes the result into the item. No sandbox involved.</p>
+
+    <p>So the chain became: a Code node that pulls the raw body out of the request, the native Crypto node to produce the HMAC SHA512, then a second Code node that compares the result against the header value.</p>
+
+    <div class="pull">
+      <p><b>WORTH REMEMBERING</b></p>
+      <p>When a low-code tool blocks something, check whether it offers the same capability as a built-in node before you fight the sandbox. The restriction is usually deliberate, and the supported path is usually already there.</p>
+    </div>
+
+    <h2>The finished chain</h2>
+
+    <p>Seven nodes, and every one of them earns its place:</p>
+
+    <div class="schematic">
+      <h4>REGISTRATION AND PAYMENT RECONCILIATION</h4>
+      <div class="chain">
+        <div class="node"><b>Webhook</b>Paystack<br>payment event</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Code</b>Extract<br>raw body</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Crypto</b>HMAC SHA512<br>over raw body</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Code</b>Compare to<br>header value</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>If</b>charge.success<br>only</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Sheets</b>Append<br>registration</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Email</b>Confirmation<br>to attendee</div>
+      </div>
+    </div>
+
+    <h3>Why the If node is separate from the signature check</h3>
+
+    <p>A verified webhook is not necessarily a successful payment. Paystack sends events for failed charges, refunds, transfers and more, all correctly signed. The signature tells you the message is genuine. The event type tells you what the message says.</p>
+
+    <p>Collapsing those two checks into one condition is how you end up adding someone to the guest list because their card was declined. They are separate questions and they get separate nodes.</p>
+
+    <h2>The notification channel changed twice</h2>
+
+    <p>The plan was a WhatsApp confirmation, since that is where this audience already lives. I built it against the Twilio sandbox, which worked, and then hit the wall every WhatsApp Business integration hits: sending templated messages to people who have not messaged you first requires an approved template and a paid tier. Twilio SMS had the same shape of problem.</p>
+
+    <p>For a demo that needed to prove the chain end to end before any money changed hands, that was a blocker rather than a cost. So the final link is email over SMTP, which has no approval queue and no per-message cost.</p>
+
+    <p>This is worth saying plainly because it comes up constantly: <strong>the messaging channel is usually the most constrained part of any automation</strong>, and it is the part people assume will be easy. Scope it first, not last.</p>
+
+    <h2>What it actually changed</h2>
+
+    <p>Before, five steps, every one of them requiring a person:</p>
+    <ol>
+      <li>Attendee pays by transfer</li>
+      <li>Someone asks for a receipt</li>
+      <li>Someone opens the bank account</li>
+      <li>Someone matches the amount by eye</li>
+      <li>Name typed onto the list by hand</li>
+    </ol>
+
+    <p>After, three, none of them requiring a person:</p>
+    <ol>
+      <li>Attendee pays</li>
+      <li>Verified row appears</li>
+      <li>Confirmation email sends itself</li>
+    </ol>
+
+    <p>I built this as a working demo and took it back to the client before pricing came up, confirmed end to end against a live Paystack test payment. That ordering is deliberate. A demo that runs removes the argument about whether the thing is possible, and moves the conversation straight to what it is worth.</p>
+
+    <div class="note-foot">
+      <a href="/#notes" class="back">All field notes</a>
+      <a href="/#contact">Something in your business like this? Tell me what breaks.</a>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 Okunola David Akinloye. Lagos, Nigeria.</span>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="/site.js"></script>
+</body>
+</html>

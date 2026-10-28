@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The one-person bottleneck | Okunola David Akinloye</title>
+<meta name="description" content="Every enquiry at an events business funnelled through one person. Rebuilding lead response on an owned WhatsApp number with an n8n FAQ layer and routing, instead of renting the pipe.">
+<link rel="canonical" href="https://loye-portfolio-seven.vercel.app/notes-one-person-bottleneck.html">
+<meta name="theme-color" content="#F2EFE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F0F0D" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://loye-portfolio-seven.vercel.app/notes-one-person-bottleneck.html">
+<meta property="og:title" content="The one-person bottleneck">
+<meta property="og:description" content="Why lead response that depends on one person replying is a structural problem, not a staffing one.">
+<meta property="og:image" content="https://loye-portfolio-seven.vercel.app/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+</script>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+
+<nav class="nav">
+  <div class="wrap">
+    <a href="/" class="mark-word">Loye<span>.</span></a>
+    <div class="nav-right">
+      <button id="theme" type="button">LIGHT</button>
+      <a href="/#contact" class="hire" data-magnetic>Start a project</a>
+    </div>
+  </div>
+</nav>
+
+<main class="note">
+  <div class="wrap">
+
+    <p class="note-kicker">FIELD NOTE 03 / LEAD RESPONSE</p>
+    <h1>The one-person bottleneck.</h1>
+    <p class="standfirst">Every enquiry at the business went through one person. He was good at it. That was not the problem, and hiring a second one would not have been the fix.</p>
+
+    <div class="note-meta">
+      <span>BUILD <b>TEPS</b></span>
+      <span>STACK <b>n8n, WhatsApp Business</b></span>
+      <span>STATUS <b>In build</b></span>
+    </div>
+
+    <p>Instagram DMs, WhatsApp messages, the occasional comment. All of it landed in one inbox, and one person answered all of it. When he was asleep, at an event, or simply busy, leads sat.</p>
+
+    <p>The instinct is to call this a staffing problem and add a second person. It is not. Two people with the same unstructured inbox is the same system with a shorter queue, and it introduces a new question nobody has answered: which of you takes this one?</p>
+
+    <h2>Separating the two jobs</h2>
+
+    <p>What looked like one task was two, and they have almost nothing in common.</p>
+
+    <p>Most incoming messages are the same handful of questions. What do you do, how does it work, what does it cost, are you free on this date. These do not need judgment. They need a correct answer delivered quickly, and a human typing them out is a waste of a human.</p>
+
+    <p>A minority are real: a specific brief, an unusual date, a negotiation, something that needs someone who knows the business to think. These need judgment and should never be automated.</p>
+
+    <p>The build exists to make sure the first category never touches a person, so that the second category reaches the right person immediately.</p>
+
+    <div class="pull">
+      <p><b>THE RULE</b></p>
+      <p>Automate the answer, route the judgment. Any system that tries to automate judgment produces confident wrong answers, and any system that routes everything to a human has not solved anything.</p>
+    </div>
+
+    <h2>The chain</h2>
+
+    <div class="schematic">
+      <h4>LEAD RESPONSE</h4>
+      <div class="chain">
+        <div class="node"><b>Intake</b>WhatsApp<br>Instagram DM</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Classify</b>Intent match<br>against FAQ set</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Answer</b>Services<br>Process, pricing</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Route</b>Qualified lead<br>to owner</div>
+        <div class="link" aria-hidden="true">&rsaquo;</div>
+        <div class="node"><b>Log</b>CRM record<br>and follow-up</div>
+      </div>
+    </div>
+
+    <h3>The handoff is the part that matters</h3>
+
+    <p>Everyone builds the FAQ layer. Fewer build the handoff properly, and that is where these systems earn trust or lose it.</p>
+
+    <p>A handoff that works carries context. The person picking it up sees what was already asked and answered, so the lead does not have to repeat themselves, which is the single most irritating experience in automated support. It also has to be obvious to the customer that they are now talking to a person, because the worst outcome is someone arguing with a bot they believe is a human.</p>
+
+    <p>And it needs a fallback. If the classifier is not confident, it routes rather than guesses. An automation that says "I am not sure, let me get someone" is working correctly. One that invents a price is not.</p>
+
+    <h2>Owning the number instead of renting it</h2>
+
+    <p>The business already used a hosted WhatsApp tool. The new build runs on a second WhatsApp Business number they own, on self-hosted n8n, and this was a deliberate argument rather than a technical preference.</p>
+
+    <p>A hosted tool is faster to start. The costs show up later:</p>
+
+    <ul>
+      <li><strong>Per-conversation pricing</strong> that scales with success, so the system gets more expensive exactly as it starts working.</li>
+      <li><strong>A ceiling on logic.</strong> Branching the vendor did not anticipate is simply unavailable, and the usual workaround is paying for a higher tier.</li>
+      <li><strong>Migration cost that grows.</strong> Conversation history and templates live inside the vendor, so the longer you stay the harder leaving gets.</li>
+    </ul>
+
+    <p>Running it on an owned number and an n8n instance means the logic is theirs, the history is theirs, and the cost does not scale per conversation. They paid for a build rather than renting a pipe.</p>
+
+    <p>I am not religious about this. For a business sending a hundred messages a month, a hosted tool is the right answer and building is a waste of money. The crossover arrives sooner than people expect once volume climbs and the branching gets specific.</p>
+
+    <h2>What changes</h2>
+
+    <p>The number worth quoting is not a response time. It is this: the count of people a lead has to wait on goes from one to zero.</p>
+
+    <p>That is the whole point. Not faster replies, though replies do get faster. The removal of a dependency on one person being available, which also means that person gets to do the work only he can do, instead of typing out the price list for the fortieth time this week.</p>
+
+    <div class="note-foot">
+      <a href="/#notes" class="back">All field notes</a>
+      <a href="/#contact">Leads waiting on one person? Tell me what breaks.</a>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 Okunola David Akinloye. Lagos, Nigeria.</span>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="/site.js"></script>
+</body>
+</html>
