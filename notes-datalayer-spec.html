@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Write the dataLayer spec before you fire a single tag | Okunola David Akinloye</title>
+<meta name="description" content="Why the measurement layer gets built before the spend starts: a written dataLayer event specification, GA4 and Tag Manager from scratch, and Meta plus TikTok pixels fed from one source.">
+<link rel="canonical" href="https://loye-portfolio-seven.vercel.app/notes-datalayer-spec.html">
+<meta name="theme-color" content="#F2EFE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F0F0D" media="(prefers-color-scheme: dark)">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://loye-portfolio-seven.vercel.app/notes-datalayer-spec.html">
+<meta property="og:title" content="Write the dataLayer spec before you fire a single tag">
+<meta property="og:description" content="The measurement layer gets built before the spend starts, or you cannot say which naira bought which customer.">
+<meta property="og:image" content="https://loye-portfolio-seven.vercel.app/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/styles.css">
+<script>
+(function(){try{var t=localStorage.getItem("theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t);}catch(e){}})();
+</script>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a href="/" class="mark-word">Loye<span>.</span></a>
+    <div class="nav-right">
+      <button id="theme" type="button">LIGHT</button>
+      <a href="/#contact" class="hire" data-magnetic>Start a project</a>
+    </div>
+  </div>
+</nav>
+
+<main class="note">
+  <div class="wrap">
+
+    <p class="note-kicker">FIELD NOTE 02 / MEASUREMENT</p>
+    <h1>Write the dataLayer spec before you fire a single tag.</h1>
+    <p class="standfirst">A ride-hailing startup was days from spending on acquisition with no way of knowing what it bought. The fix was not a tracking tool. It was a document.</p>
+
+    <div class="note-meta">
+      <span>BUILD <b>LincRide</b></span>
+      <span>ROLE <b>Growth Lead</b></span>
+      <span>STACK <b>GA4, GTM, Meta, TikTok</b></span>
+    </div>
+
+    <p>The brief was growth. The first thing I did was not growth. It was stopping the spend until there was something underneath it.</p>
+
+    <p>This is the least popular recommendation in the job and the one that pays for itself fastest. A campaign without measurement does not produce bad data. It produces no data, and then everyone argues from instinct about what worked.</p>
+
+    <h2>What a dataLayer spec actually is</h2>
+
+    <p>The dataLayer is a plain JavaScript array sitting on the page that the site pushes events into. Tag Manager watches it, and when something it recognises arrives, it fires whichever tags are configured to listen. GA4 gets one copy, Meta gets one, TikTok gets one, all from the same push.</p>
+
+    <p>The spec is the written agreement, before any code exists, about exactly what gets pushed and what it is called. Something like this:</p>
+
+<pre><code><span class="c">// Fires once, immediately after the account is created.</span>
+window.dataLayer.push({
+  <span class="k">event</span>: 'sign_up',
+  method: 'phone',       <span class="c">// phone | google | apple</span>
+  user_type: 'rider'     <span class="c">// rider | driver</span>
+});
+
+<span class="c">// Fires when the rider confirms, not when they open the screen.</span>
+window.dataLayer.push({
+  <span class="k">event</span>: 'ride_requested',
+  pickup_area: 'ikeja',
+  payment_method: 'cash'
+});</code></pre>
+
+    <p>It looks trivial. The value is not in the code, it is in having decided, in writing, that the event is called <code>sign_up</code> and not <code>signup</code> or <code>Sign_Up</code> or <code>user_registered</code>, and that it fires on confirmation rather than on screen view.</p>
+
+    <h2>What goes wrong without one</h2>
+
+    <p>Every one of these is ordinary, and every one wastes weeks:</p>
+
+    <ul>
+      <li><strong>Three names for one thing.</strong> The web developer ships <code>signup</code>, the app developer ships <code>user_registered</code>, someone later adds <code>sign_up</code>. Now your signup total is spread across three events and every report undercounts.</li>
+      <li><strong>The event fires at the wrong moment.</strong> A purchase event on the checkout page load rather than on payment confirmation means you are counting intent as revenue. The number looks great and means nothing.</li>
+      <li><strong>Fires twice.</strong> Single-page apps re-render, and an event wired to a component rather than an action double-counts silently. Your conversion rate doubles and nobody can explain why.</li>
+      <li><strong>No parameters.</strong> You can see that two thousand people signed up. You cannot see that almost all of them came through one channel, because nobody agreed to send <code>method</code>.</li>
+    </ul>
+
+    <p>The common thread is that none of these announce themselves. They do not error. They produce a clean-looking dashboard that is quietly wrong, and you only find out when you try to make a decision with it.</p>
+
+    <div class="pull">
+      <p><b>THE RULE</b></p>
+      <p>Decide the event names, the firing moment and the parameters in writing, before implementation. Rename an event after launch and you have cut your own history in half.</p>
+    </div>
+
+    <h2>The order the build runs in</h2>
+
+    <ol>
+      <li><strong>Spec.</strong> The written list of events, their firing moment, their parameters and allowed values.</li>
+      <li><strong>GA4 and Tag Manager, from scratch.</strong> Container, triggers for each named event, conversions marked.</li>
+      <li><strong>Pixels onto the same layer.</strong> Meta and TikTok both read the same dataLayer pushes rather than carrying their own separate instrumentation.</li>
+      <li><strong>Verify every event fires once, with its parameters, from a real device.</strong> Not Tag Manager preview mode alone, which is honest about what it sees but does not catch what the app failed to send.</li>
+      <li><strong>Only now, spend.</strong></li>
+    </ol>
+
+    <h3>Why the pixels share one source</h3>
+
+    <p>The tempting alternative is to let each platform drop its own snippet and track independently. It is faster for about a week.</p>
+
+    <p>Then the numbers disagree, because each platform instrumented a slightly different moment, and you have no shared definition to arbitrate with. Feeding all three from one dataLayer means they can still disagree on attribution, which is expected and fine, but they agree on what happened and when. That is the difference between a reconciliation conversation and a shouting match.</p>
+
+    <h2>What it bought</h2>
+
+    <p>The campaign ran across platforms with a creative testing structure across headline variants. Inside 48 hours of a cold launch it put 200 Android and 150 iOS installs on the board, with the strongest headline variant holding a 1.09% click-through rate.</p>
+
+    <p>The installs are the headline number. The useful number is that I can tell you the split by platform and which variant carried the CTR, because the layer existed before the money moved. Had it not, the only honest summary would have been "about three hundred and fifty, we think, and the ads seemed to work."</p>
+
+    <div class="pull">
+      <p><b>WORTH REMEMBERING</b></p>
+      <p>Tracking built after a campaign tells you what is happening now. Tracking built before it tells you what the campaign did. Only one of those is worth paying for.</p>
+    </div>
+
+    <div class="note-foot">
+      <a href="/#notes" class="back">All field notes</a>
+      <a href="/#contact">Spending without measurement? Let's fix the order.</a>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 Okunola David Akinloye. Lagos, Nigeria.</span>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/terms.html">Terms</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="/site.js"></script>
+</body>
+</html>

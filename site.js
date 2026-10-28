@@ -1,10 +1,16 @@
 /* ------------------------------------------------------------------
    CONFIGURE THESE TWO LINES. Everything else runs on its own.
 
-   FORM_ENDPOINT  a form service URL that accepts a POST.
-                  Formspree, Basin and Web3Forms all work.
-                  Leave it empty and the form opens an email
-                  instead, so it still works either way.
+   FORM_ENDPOINT  where contact form submissions are sent.
+                  Paste the Google Apps Script web app URL here
+                  (see google-apps-script.gs for the five-minute
+                  setup). Formspree, Basin and Web3Forms URLs also
+                  work if you would rather use one of those.
+
+                  IMPORTANT: while this is empty, the form falls
+                  back to opening the visitor's mail app, which on
+                  most phones and many desktops does nothing at all.
+                  Enquiries are lost. Fill this in.
 
    GA_ID          your GA4 measurement ID. Only loads after someone
                   agrees to analytics. Leave empty for none.
@@ -416,6 +422,10 @@ var GA_ID = "";
       return;
     }
     if (!FORM_ENDPOINT) {
+      // Nothing is configured, so fall back to the visitor's mail app.
+      // This is unreliable by nature: plenty of devices have no mail
+      // client wired up and the click appears to do nothing. Set
+      // FORM_ENDPOINT so this branch never runs.
       window.location.href = "mailto:davidakin6@gmail.com" +
         "?subject=" + encodeURIComponent("Project enquiry from " + form.name_.value.trim()) +
         "&body=" + encodeURIComponent(form.message.value.trim() + "\n\n" +
@@ -429,14 +439,21 @@ var GA_ID = "";
     send.textContent = "Sending";
     status.textContent = "Sending your message.";
 
+    // Content-Type is text/plain on purpose. Anything else (including
+    // application/json) makes the browser fire a CORS preflight, which
+    // Google Apps Script does not answer, so the request dies before it
+    // is sent. text/plain is CORS-safelisted, so it goes straight
+    // through, and the script reads the raw body as JSON anyway.
     fetch(FORM_ENDPOINT, {
       method: "POST",
-      headers: { "Accept": "application/json", "Content-Type": "application/json" },
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({
         name: form.name_.value.trim(),
         email: form.email.value.trim(),
         company: form.company.value.trim(),
-        message: form.message.value.trim()
+        message: form.message.value.trim(),
+        website: form.website ? form.website.value : "",
+        source: window.location.hostname
       })
     }).then(function (r) {
       if (!r.ok) throw new Error(r.status);
